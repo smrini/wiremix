@@ -128,14 +128,38 @@ impl Tab {
     }
 }
 
-impl std::fmt::Display for TabKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TabKind::Playback => write!(f, "Playback"),
-            TabKind::Recording => write!(f, "Recording"),
-            TabKind::Output => write!(f, "Output Devices"),
-            TabKind::Input => write!(f, "Input Devices"),
-            TabKind::Configuration => write!(f, "Configuration"),
+impl From<TabKind> for Tab {
+    fn from(tab_kind: TabKind) -> Tab {
+        match tab_kind {
+            TabKind::Playback => Tab::new(
+                String::from("Playback"),
+                ObjectList::new(ListKind::Node(view::NodeKind::Playback), None),
+            ),
+            TabKind::Recording => Tab::new(
+                String::from("Recording"),
+                ObjectList::new(
+                    ListKind::Node(view::NodeKind::Recording),
+                    None,
+                ),
+            ),
+            TabKind::Output => Tab::new(
+                String::from("Output Devices"),
+                ObjectList::new(
+                    ListKind::Node(view::NodeKind::Output),
+                    Some(DeviceKind::Sink),
+                ),
+            ),
+            TabKind::Input => Tab::new(
+                String::from("Input Devices"),
+                ObjectList::new(
+                    ListKind::Node(view::NodeKind::Input),
+                    Some(DeviceKind::Source),
+                ),
+            ),
+            TabKind::Configuration => Tab::new(
+                String::from("Configuration"),
+                ObjectList::new(ListKind::Device, None),
+            ),
         }
     }
 }
@@ -204,37 +228,16 @@ impl<'a> App<'a> {
         rx: mpsc::Receiver<Event>,
         config: Config,
     ) -> Self {
-        let tabs = vec![
-            Tab::new(
-                TabKind::Playback.to_string(),
-                ObjectList::new(ListKind::Node(view::NodeKind::Playback), None),
-            ),
-            Tab::new(
-                TabKind::Recording.to_string(),
-                ObjectList::new(
-                    ListKind::Node(view::NodeKind::Recording),
-                    None,
-                ),
-            ),
-            Tab::new(
-                TabKind::Output.to_string(),
-                ObjectList::new(
-                    ListKind::Node(view::NodeKind::Output),
-                    Some(DeviceKind::Sink),
-                ),
-            ),
-            Tab::new(
-                TabKind::Input.to_string(),
-                ObjectList::new(
-                    ListKind::Node(view::NodeKind::Input),
-                    Some(DeviceKind::Source),
-                ),
-            ),
-            Tab::new(
-                TabKind::Configuration.to_string(),
-                ObjectList::new(ListKind::Device, None),
-            ),
-        ];
+        let tabs = [
+            TabKind::Playback,
+            TabKind::Recording,
+            TabKind::Output,
+            TabKind::Input,
+            TabKind::Configuration,
+        ]
+        .into_iter()
+        .map(Tab::from)
+        .collect();
 
         // Update peaks with VU-meter-style ballistics
         let peak_processor = |new_peak, current_peak, samples, rate| {
