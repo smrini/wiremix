@@ -41,7 +41,8 @@ pub struct Config {
     pub keybindings: HashMap<KeyEvent, Action>,
     pub help: help::Help,
     pub names: Names,
-    pub tab: TabKind,
+    pub tab: usize,
+    pub tabs: Vec<TabKind>,
     pub lazy_capture: bool,
     pub filters: Vec<MatchCondition>,
 }
@@ -83,6 +84,8 @@ struct ConfigFile {
     themes: HashMap<String, Theme>,
     #[serde(default = "default_tab")]
     tab: Option<TabKind>,
+    #[serde(default = "default_tabs")]
+    tabs: Vec<TabKind>,
     #[serde(default = "default_lazy_capture")]
     lazy_capture: bool,
     #[serde(default = "Filter::defaults", deserialize_with = "Filter::merge")]
@@ -212,7 +215,6 @@ pub struct Filter {
     Deserialize, Default, Debug, Clone, Copy, PartialEq, clap::ValueEnum,
 )]
 #[serde(rename_all = "lowercase")]
-#[cfg_attr(test, derive(strum::EnumIter))]
 pub enum TabKind {
     #[default]
     Playback,
@@ -220,12 +222,6 @@ pub enum TabKind {
     Output,
     Input,
     Configuration,
-}
-
-impl TabKind {
-    pub fn index(&self) -> usize {
-        *self as usize
-    }
 }
 
 fn default_fps() -> Option<f32> {
@@ -242,6 +238,16 @@ fn default_peaks() -> Option<Peaks> {
 
 fn default_tab() -> Option<TabKind> {
     Some(TabKind::default())
+}
+
+fn default_tabs() -> Vec<TabKind> {
+    vec![
+        TabKind::Playback,
+        TabKind::Recording,
+        TabKind::Output,
+        TabKind::Input,
+        TabKind::Configuration,
+    ]
 }
 
 fn default_char_set_name() -> String {
@@ -299,6 +305,10 @@ impl ConfigFile {
             self.tab = Some(*tab);
         }
 
+        if let Some(tabs) = &opt.tabs {
+            self.tabs = tabs.clone();
+        }
+
         if let Some(max_volume_percent) = &opt.max_volume_percent {
             self.max_volume_percent = Some(*max_volume_percent);
         }
@@ -354,6 +364,16 @@ impl TryFrom<ConfigFile> for Config {
             }
         }
 
+        if config_file.tabs.is_empty() {
+            anyhow::bail!("tabs must be non-empty");
+        }
+
+        let tab = config_file
+            .tabs
+            .iter()
+            .position(|&t| t == config_file.tab.unwrap_or_default())
+            .context("initial tab not found in tabs")?;
+
         // Emulate signals. This is intentionally done after generating help.
         config_file
             .keybindings
@@ -373,7 +393,8 @@ impl TryFrom<ConfigFile> for Config {
             keybindings: config_file.keybindings,
             help,
             names: config_file.names,
-            tab: config_file.tab.unwrap_or_default(),
+            tab,
+            tabs: config_file.tabs,
             lazy_capture: config_file.lazy_capture,
             filters,
         })
@@ -458,6 +479,7 @@ pub mod strict {
         #[serde(deserialize_with = "themes")]
         themes: HashMap<String, Theme>,
         tab: Option<TabKind>,
+        tabs: Vec<TabKind>,
         lazy_capture: bool,
         filters: Vec<Filter>,
     }
@@ -478,6 +500,7 @@ pub mod strict {
                 char_sets: strict.char_sets,
                 themes: strict.themes,
                 tab: strict.tab,
+                tabs: strict.tabs,
                 lazy_capture: strict.lazy_capture,
                 filters: strict.filters,
             }
@@ -646,6 +669,43 @@ mod tests {
         config_file.apply_opt(&opt);
         let config = Config::try_from(config_file).unwrap();
         assert_eq!(config.fps, Some(30.0));
+    }
+
+    #[test]
+    fn tabs_empty_is_error() {
+        let config_file: ConfigFile = toml::from_str("tabs = []").unwrap();
+        assert!(Config::try_from(config_file).is_err());
+    }
+
+    #[test]
+    fn tab_not_in_tabs_is_error() {
+        let config = r#"
+            tabs = ["output", "input"]
+        "#;
+        let config_file: ConfigFile = toml::from_str(config).unwrap();
+        assert!(Config::try_from(config_file).is_err());
+    }
+
+    #[test]
+    fn tab_index_resolves_to_position_in_tabs() {
+        let config = r#"
+            tab = "output"
+            tabs = ["playback", "output", "input"]
+        "#;
+        let config = Config::from_toml_str(config);
+        assert_eq!(config.tab, 1);
+    }
+
+    #[test]
+    fn opt_tabs_overrides_config_tabs() {
+        let mut config_file: ConfigFile = toml::from_str("").unwrap();
+        let opt = Opt {
+            tabs: Some(vec![TabKind::Playback, TabKind::Input]),
+            ..Default::default()
+        };
+        config_file.apply_opt(&opt);
+        let config = Config::try_from(config_file).unwrap();
+        assert_eq!(config.tabs, vec![TabKind::Playback, TabKind::Input]);
     }
 
     #[test]

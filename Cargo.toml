@@ -40,7 +40,6 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter"], optional =
 
 [dev-dependencies]
 paste = "1.0.15"
-strum = { version = "0.27.1", features = ["derive"] }
 
 [features]
 trace = ["dep:tracing", "dep:tracing-error", "dep:tracing-subscriber"]

@@ -53,6 +53,10 @@ pub struct Opt {
     )]
     pub tab: Option<TabKind>,
 
+    /// Which tabs are present and their order
+    #[clap(short = 'T', long, num_args = 1.., value_enum)]
+    pub tabs: Option<Vec<TabKind>>,
+
     /// Maximum volume for volume sliders
     #[clap(short = 'm', long, value_name = "PERCENT")]
     pub max_volume_percent: Option<f32>,
