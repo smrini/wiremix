@@ -17,6 +17,7 @@ rustPlatform.buildRustPackage {
     fileset = fs.unions [
       (fs.fileFilter (file: builtins.any file.hasExt [ "rs" ]) ./src)
       ./wiremix.desktop
+      ./wiremix.svg
       ./wiremix.toml
       ./Cargo.lock
       ./Cargo.toml
@@ -37,5 +38,6 @@ rustPlatform.buildRustPackage {
     mkdir -p $out/share
     install -Dm755 ${./wiremix.toml} $out/share/wiremix.toml
     install -Dm644 ${./wiremix.desktop} $out/share/applications/wiremix.desktop
+    install -Dm644 ${./wiremix.svg} $out/share/icons/hicolor/scalable/apps/wiremix.svg
   '';
 }
