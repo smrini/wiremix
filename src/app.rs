@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 
-use crate::config::{Config, Peaks};
+use crate::config::{Config, Peaks, TabKind};
 use crate::wirehose::state::CaptureEligibility;
 use crate::wirehose::{
     media_class, CommandSender, Event as PipewireEvent, PeakProcessor,
@@ -125,26 +125,6 @@ struct Tab {
 impl Tab {
     fn new(title: String, list: ObjectList) -> Self {
         Self { title, list }
-    }
-}
-
-#[derive(
-    Deserialize, Default, Debug, Clone, Copy, PartialEq, clap::ValueEnum,
-)]
-#[serde(rename_all = "lowercase")]
-#[cfg_attr(test, derive(strum::EnumIter))]
-pub enum TabKind {
-    #[default]
-    Playback,
-    Recording,
-    Output,
-    Input,
-    Configuration,
-}
-
-impl TabKind {
-    pub fn index(&self) -> usize {
-        *self as usize
     }
 }
 

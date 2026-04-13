@@ -23,7 +23,7 @@ use ratatui::{style::Style, widgets::block::BorderType};
 use serde::Deserialize;
 use toml;
 
-use crate::app::{Action, TabKind};
+use crate::app::Action;
 pub use crate::config::matching::MatchCondition;
 use crate::opt::Opt;
 
@@ -206,6 +206,26 @@ pub struct Theme {
 pub struct Filter {
     pub id: Option<String>,
     pub matches: Vec<MatchCondition>,
+}
+
+#[derive(
+    Deserialize, Default, Debug, Clone, Copy, PartialEq, clap::ValueEnum,
+)]
+#[serde(rename_all = "lowercase")]
+#[cfg_attr(test, derive(strum::EnumIter))]
+pub enum TabKind {
+    #[default]
+    Playback,
+    Recording,
+    Output,
+    Input,
+    Configuration,
+}
+
+impl TabKind {
+    pub fn index(&self) -> usize {
+        *self as usize
+    }
 }
 
 fn default_fps() -> Option<f32> {

@@ -4,8 +4,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use crate::app::TabKind;
-use crate::config;
+use crate::config::{self, TabKind};
 
 const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 
