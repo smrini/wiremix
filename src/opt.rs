@@ -4,8 +4,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use crate::app::TabKind;
-use crate::config;
+use crate::config::{self, TabKind};
 
 const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 
@@ -53,6 +52,10 @@ pub struct Opt {
         value_parser = clap::value_parser!(TabKind),
     )]
     pub tab: Option<TabKind>,
+
+    /// Which tabs are present and their order
+    #[clap(short = 'T', long, num_args = 1.., value_enum)]
+    pub tabs: Option<Vec<TabKind>>,
 
     /// Maximum volume for volume sliders
     #[clap(short = 'm', long, value_name = "PERCENT")]

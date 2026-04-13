@@ -74,6 +74,9 @@ Options:
   -v, --tab <TAB>
           Initial tab view [possible values: playback, recording, output, input,
           configuration]
+  -T, --tabs <TABS>...
+          Which tabs are present and their order [possible values: playback,
+          recording, output, input, configuration]
   -m, --max-volume-percent <PERCENT>
           Maximum volume for volume sliders
       --no-enforce-max-volume
@@ -165,6 +168,7 @@ peaks = "auto"
 char_set = "default"
 theme = "default"
 tab = "playback"
+tabs = [ "playback", "recording", "output", "input", "configuration" ]
 max_volume_percent = 150.0
 enforce_max_volume = false
 lazy_capture = false

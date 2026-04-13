@@ -32,6 +32,9 @@ theme = "default"
 # Initial tab
 tab = "playback"
 
+# Which tabs are present and their order
+tabs = [ "playback", "recording", "output", "input", "configuration" ]
+
 # Maximum percentage for volume sliders
 max_volume_percent = 150.0
 

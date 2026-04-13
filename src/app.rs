@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 
-use crate::config::{Config, Peaks};
+use crate::config::{Config, Peaks, TabKind};
 use crate::wirehose::state::CaptureEligibility;
 use crate::wirehose::{
     media_class, CommandSender, Event as PipewireEvent, PeakProcessor,
@@ -128,34 +128,38 @@ impl Tab {
     }
 }
 
-#[derive(
-    Deserialize, Default, Debug, Clone, Copy, PartialEq, clap::ValueEnum,
-)]
-#[serde(rename_all = "lowercase")]
-#[cfg_attr(test, derive(strum::EnumIter))]
-pub enum TabKind {
-    #[default]
-    Playback,
-    Recording,
-    Output,
-    Input,
-    Configuration,
-}
-
-impl TabKind {
-    pub fn index(&self) -> usize {
-        *self as usize
-    }
-}
-
-impl std::fmt::Display for TabKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TabKind::Playback => write!(f, "Playback"),
-            TabKind::Recording => write!(f, "Recording"),
-            TabKind::Output => write!(f, "Output Devices"),
-            TabKind::Input => write!(f, "Input Devices"),
-            TabKind::Configuration => write!(f, "Configuration"),
+impl From<TabKind> for Tab {
+    fn from(tab_kind: TabKind) -> Tab {
+        match tab_kind {
+            TabKind::Playback => Tab::new(
+                String::from("Playback"),
+                ObjectList::new(ListKind::Node(view::NodeKind::Playback), None),
+            ),
+            TabKind::Recording => Tab::new(
+                String::from("Recording"),
+                ObjectList::new(
+                    ListKind::Node(view::NodeKind::Recording),
+                    None,
+                ),
+            ),
+            TabKind::Output => Tab::new(
+                String::from("Output Devices"),
+                ObjectList::new(
+                    ListKind::Node(view::NodeKind::Output),
+                    Some(DeviceKind::Sink),
+                ),
+            ),
+            TabKind::Input => Tab::new(
+                String::from("Input Devices"),
+                ObjectList::new(
+                    ListKind::Node(view::NodeKind::Input),
+                    Some(DeviceKind::Source),
+                ),
+            ),
+            TabKind::Configuration => Tab::new(
+                String::from("Configuration"),
+                ObjectList::new(ListKind::Device, None),
+            ),
         }
     }
 }
@@ -224,37 +228,7 @@ impl<'a> App<'a> {
         rx: mpsc::Receiver<Event>,
         config: Config,
     ) -> Self {
-        let tabs = vec![
-            Tab::new(
-                TabKind::Playback.to_string(),
-                ObjectList::new(ListKind::Node(view::NodeKind::Playback), None),
-            ),
-            Tab::new(
-                TabKind::Recording.to_string(),
-                ObjectList::new(
-                    ListKind::Node(view::NodeKind::Recording),
-                    None,
-                ),
-            ),
-            Tab::new(
-                TabKind::Output.to_string(),
-                ObjectList::new(
-                    ListKind::Node(view::NodeKind::Output),
-                    Some(DeviceKind::Sink),
-                ),
-            ),
-            Tab::new(
-                TabKind::Input.to_string(),
-                ObjectList::new(
-                    ListKind::Node(view::NodeKind::Input),
-                    Some(DeviceKind::Source),
-                ),
-            ),
-            Tab::new(
-                TabKind::Configuration.to_string(),
-                ObjectList::new(ListKind::Device, None),
-            ),
-        ];
+        let tabs = config.tabs.iter().copied().map(Tab::from).collect();
 
         // Update peaks with VU-meter-style ballistics
         let peak_processor = |new_peak, current_peak, samples, rate| {
@@ -274,7 +248,7 @@ impl<'a> App<'a> {
             rx,
             error_message: None,
             tabs,
-            current_tab_index: config.tab.index(),
+            current_tab_index: config.tab,
             mouse_areas: Vec::new(),
             is_ready: false,
             state,
@@ -888,7 +862,6 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::VecDeque;
     use std::sync::Arc;
-    use strum::IntoEnumIterator;
 
     fn fixture<'a>(wirehose: &'a mock::WirehoseHandle<'a>) -> App<'a> {
         let (_, event_rx) = mpsc::channel();
@@ -905,7 +878,8 @@ mod tests {
             keybindings: Default::default(),
             help: Default::default(),
             names: Default::default(),
-            tab: Default::default(),
+            tab: 0,
+            tabs: vec![TabKind::Playback],
             lazy_capture: Default::default(),
             filters: Default::default(),
         };
@@ -999,7 +973,14 @@ mod tests {
             keybindings,
             help: Default::default(),
             names: Default::default(),
-            tab: Default::default(),
+            tab: 0,
+            tabs: vec![
+                TabKind::Playback,
+                TabKind::Recording,
+                TabKind::Output,
+                TabKind::Input,
+                TabKind::Configuration,
+            ],
             lazy_capture: Default::default(),
             filters: Default::default(),
         };
@@ -1011,28 +992,6 @@ mod tests {
         assert_eq!(app.current_tab_index, 4);
         let _ = x.handle(&mut app);
         assert_eq!(app.current_tab_index, 2);
-    }
-
-    /// Ensure that the tabs enum variants are in the same order as the app's
-    /// tab Vec. Making the initial tab configurable depends on this property
-    /// because it uses the position of the enum variants to derivce an index
-    /// into the tab Vec.
-    #[test]
-    fn tab_enum_order_matches_tab_vec() {
-        let wirehose = mock::WirehoseHandle::default();
-        let app = fixture(&wirehose);
-
-        assert_eq!(TabKind::iter().count(), app.tabs.len());
-
-        for (tab, Tab { title, .. }) in TabKind::iter().zip(app.tabs.iter()) {
-            match tab {
-                TabKind::Playback => assert_eq!(title, "Playback"),
-                TabKind::Recording => assert_eq!(title, "Recording"),
-                TabKind::Output => assert_eq!(title, "Output Devices"),
-                TabKind::Input => assert_eq!(title, "Input Devices"),
-                TabKind::Configuration => assert_eq!(title, "Configuration"),
-            }
-        }
     }
 
     #[test]
